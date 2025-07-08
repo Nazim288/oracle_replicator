@@ -1,0 +1,233 @@
+spring:
+  application:
+    name: mssql-flink-replication-service
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/target_db?currentSchema=oracle_metadata
+    username: postgres
+    password: kampus
+    hikari:
+      maximum-pool-size: 20
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+      pool-name: TargetDBPool
+
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    locations: classpath:db/migration
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics,info
+    endpoint:
+      health:
+        show-details: always
+    metrics:
+      export:
+        prometheus:
+          enabled: true
+
+replication:
+  enabled: true
+  max-retries: 5
+
+  databases:
+    info:
+      - name: source_db_1
+        url: jdbc:oracle:thin:@//localhost:1521/free
+        username: system
+        password: oracPas.28
+        schema: source_db_1
+        priority: 1
+        active: true
+  #      - name: source_db_2
+  #        url: jdbc:oracle:thin:@//localhost:1521/free
+  #        username: system
+  #        password: oracPas.28
+  #        schema: SOURCE2
+  #        priority: 1
+  #        active: true
+  #      - name: source_db_3
+  #        url: jdbc:oracle:thin:@//localhost:1521/free
+  #        username: system
+  #        password: oracPas.28
+  #        schema: SOURCE1
+  #        priority: 1
+  #        active: true
+  #      - name: source_db_4
+  #        url: jdbc:oracle:thin:@//localhost:1521/free
+  #        username: system
+  #        password: oracPas.28
+  #        schema: SOURCE2
+  #        priority: 1
+  #        active: true
+  #      - name: source_db_5
+  #        url: jdbc:oracle:thin:@//localhost:1521/free
+  #        username: system
+  #        password: oracPas.28
+  #        schema: SOURCE1
+  #        priority: 1
+  #        active: true
+  #      - name: source_db_6
+  #        url: jdbc:oracle:thin:@//localhost:1521/free
+  #        username: system
+  #        password: oracPas.28
+  #        schema: SOURCE2
+  #        priority: 1
+  #        active: true
+  #      - name: source_db_7
+  #        url: jdbc:oracle:thin:@//localhost:1521/free
+  #        username: system
+  #        password: oracPas.28
+  #        schema: SOURCE1
+  #        priority: 1
+  #        active: true
+  #      - name: source_db_8
+  #        url: jdbc:oracle:thin:@//localhost:1521/free
+  #        username: system
+  #        password: oracPas.28
+  #        schema: SOURCE2
+  #        priority: 1
+  #        active: true
+  #      - name: source_db_9
+  #        url: jdbc:oracle:thin:@//localhost:1521/free
+  #        username: system
+  #        password: oracPas.28
+  #        schema: SOURCE1
+  #        priority: 1
+  #        active: true
+  #      - name: source_db_10
+  #        url: jdbc:oracle:thin:@//localhost:1521/free
+  #        username: system
+  #        password: oracPas.28
+  #        schema: SOURCE2
+  #        priority: 1
+  #        active: true
+  #      - name: source_db_11
+  #        url: jdbc:oracle:thin:@//localhost:1521/free
+  #        username: system
+  #        password: oracPas.28
+  #        schema: SOURCE1
+  #        priority: 1
+  #        active: true
+  #      - name: source_db_12
+  #        url: jdbc:oracle:thin:@//localhost:1521/free
+  #        username: system
+  #        password: oracPas.28
+  #        schema: SOURCE2
+  #        priority: 1
+  #        active: true
+  #      - name: source_db_13
+  #        url: jdbc:oracle:thin:@//localhost:1521/free
+  #        username: system
+  #        password: oracPas.28
+  #        schema: SOURCE1
+  #        priority: 1
+  #        active: true
+  #      - name: source_db_14
+  #        url: jdbc:oracle:thin:@//localhost:1521/free
+  #        username: system
+  #        password: oracPas.28
+  #        schema: SOURCE2
+  #        priority: 1
+  #        active: true
+  #      - name: source_db_15
+  #        url: jdbc:oracle:thin:@//localhost:1521/free
+  #        username: system
+  #        password: oracPas.28
+  #        schema: SOURCE1
+  #        priority: 1
+  #        active: true
+  #      - name: source_db_16
+  #        url: jdbc:oracle:thin:@//localhost:1521/free
+  #        username: system
+  #        password: oracPas.28
+  #        schema: SOURCE2
+  #        priority: 1
+  #        active: true
+  #      - name: source_db_17
+  #        url: jdbc:oracle:thin:@//localhost:1521/free
+  #        username: system
+  #        password: oracPas.28
+  #        schema: SOURCE1
+  #        priority: 1
+  #        active: true
+  #      - name: source_db_18
+  #        url: jdbc:oracle:thin:@//localhost:1521/free
+  #        username: system
+  #        password: oracPas.28
+  #        schema: SOURCE2
+  #        priority: 1
+  #        active: true
+  #      - name: source_db_19
+  #        url: jdbc:oracle:thin:@//localhost:1521/free
+  #        username: system
+  #        password: oracPas.28
+  #        schema: SOURCE1
+  #        priority: 1
+  #        active: true
+  #      - name: source_db_20
+  #        url: jdbc:oracle:thin:@//localhost:1521/free
+  #        username: system
+  #        password: oracPas.28
+  #        schema: SOURCE2
+  #        priority: 1
+  #        active: true
+
+  oracle:
+    tables:
+      - all_col_comments
+      - all_mviews
+      - all_tab_cols
+      - all_tab_comments
+      - ALL_TAB_IDENTITY_COLS
+      - all_tables
+      - all_views
+
+    target-database-property:
+      url: jdbc:postgresql://localhost:5432/target_db?currentSchema=oracle_metadata
+      username: postgres
+      password: kampus
+
+flink:
+  job:
+    name: pg-replication-job
+    parallelism: 1
+    max-retries: 3
+    retry-delay-ms: 1000
+    cron: "0 0 22 * * *"
+
+    checkpoint:
+      interval: 60000 # ???????? ????? ????????? (??)
+      timeout: 30000
+      mode: EXACTLY_ONCE
+    restart-strategy:
+      fixed-delay:
+        attempts: 3
+        delay: 10000
+    buffer-timeout: 100
+    watermark-interval: 10000
+
+logging:
+  level:
+    root: INFO
+    org:
+      apache:
+        flink: INFO
+      springframework:
+        jdbc: WARN
+      hikari: WARN
+    com:
+      example:
+        flinkreplication: DEBUG
+  file:
+    name: logs/flink-replication.log
+    max-size: 50MB
+    max-history: 7
+  pattern:
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+    console: "%d{HH:mm:ss} %-5level %logger{36} - %msg%n"
