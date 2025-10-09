@@ -1,9 +1,13 @@
 spring:
   application:
-    name: mssql-flink-replication-service
+    name: oracle-replication-service
+    version: 0.0.1-ORACLE
+    dpt: 912044
+    dntdom: GPB
+    user: test_user
 
   datasource:
-    url: jdbc:postgresql://localhost:5432/target_db?currentSchema=oracle_metadata
+    url: jdbc:postgresql://localhost:5432/meta_base?currentSchema=oracle_metadata
     username: postgres
     password: kampus
     hikari:
@@ -13,10 +17,31 @@ spring:
       max-lifetime: 1800000
       pool-name: TargetDBPool
 
+  jpa:
+    hibernate:
+      ddl-auto: none
+    show-sql: true
+    properties:
+      hibernate:
+        default_schema: mssql_metadata
+
   flyway:
+    schemas: mssql_metadata
     enabled: true
-    baseline-on-migrate: true
     locations: classpath:db/migration
+    url: jdbc:postgresql://localhost:5432/meta_base?currentSchema=mssql_metadata
+    user: postgres
+    password: kampus
+
+  tomcat:
+    max-connections: 100 # Максимальное количество соединений
+    accept-count: 100 # Максимальное количество потоков
+    threads:
+      max: 50 # Размер очереди запросов
+
+sources:
+  connections:
+    file-path: ${CONFIG_DIR:classpath:db-connections.json}
 
 management:
   endpoints:
@@ -31,186 +56,30 @@ management:
         prometheus:
           enabled: true
 
-replication:
+logs-database:
   enabled: true
-  max-retries: 5
+  task-create-partition: 0 0 0 * * ?
+  url: jdbc:postgresql://localhost:5432/log_db
+  username: postgres
+  password: kampus
+  driverClassName: org.postgresql.Driver
 
-  databases:
-    info:
-      - name: source_db_1
-        url: jdbc:oracle:thin:@//localhost:1521/free
-        username: system
-        password: oracPas.28
-        schema: source_db_1
-        priority: 1
-        active: true
-  #      - name: source_db_2
-  #        url: jdbc:oracle:thin:@//localhost:1521/free
-  #        username: system
-  #        password: oracPas.28
-  #        schema: SOURCE2
-  #        priority: 1
-  #        active: true
-  #      - name: source_db_3
-  #        url: jdbc:oracle:thin:@//localhost:1521/free
-  #        username: system
-  #        password: oracPas.28
-  #        schema: SOURCE1
-  #        priority: 1
-  #        active: true
-  #      - name: source_db_4
-  #        url: jdbc:oracle:thin:@//localhost:1521/free
-  #        username: system
-  #        password: oracPas.28
-  #        schema: SOURCE2
-  #        priority: 1
-  #        active: true
-  #      - name: source_db_5
-  #        url: jdbc:oracle:thin:@//localhost:1521/free
-  #        username: system
-  #        password: oracPas.28
-  #        schema: SOURCE1
-  #        priority: 1
-  #        active: true
-  #      - name: source_db_6
-  #        url: jdbc:oracle:thin:@//localhost:1521/free
-  #        username: system
-  #        password: oracPas.28
-  #        schema: SOURCE2
-  #        priority: 1
-  #        active: true
-  #      - name: source_db_7
-  #        url: jdbc:oracle:thin:@//localhost:1521/free
-  #        username: system
-  #        password: oracPas.28
-  #        schema: SOURCE1
-  #        priority: 1
-  #        active: true
-  #      - name: source_db_8
-  #        url: jdbc:oracle:thin:@//localhost:1521/free
-  #        username: system
-  #        password: oracPas.28
-  #        schema: SOURCE2
-  #        priority: 1
-  #        active: true
-  #      - name: source_db_9
-  #        url: jdbc:oracle:thin:@//localhost:1521/free
-  #        username: system
-  #        password: oracPas.28
-  #        schema: SOURCE1
-  #        priority: 1
-  #        active: true
-  #      - name: source_db_10
-  #        url: jdbc:oracle:thin:@//localhost:1521/free
-  #        username: system
-  #        password: oracPas.28
-  #        schema: SOURCE2
-  #        priority: 1
-  #        active: true
-  #      - name: source_db_11
-  #        url: jdbc:oracle:thin:@//localhost:1521/free
-  #        username: system
-  #        password: oracPas.28
-  #        schema: SOURCE1
-  #        priority: 1
-  #        active: true
-  #      - name: source_db_12
-  #        url: jdbc:oracle:thin:@//localhost:1521/free
-  #        username: system
-  #        password: oracPas.28
-  #        schema: SOURCE2
-  #        priority: 1
-  #        active: true
-  #      - name: source_db_13
-  #        url: jdbc:oracle:thin:@//localhost:1521/free
-  #        username: system
-  #        password: oracPas.28
-  #        schema: SOURCE1
-  #        priority: 1
-  #        active: true
-  #      - name: source_db_14
-  #        url: jdbc:oracle:thin:@//localhost:1521/free
-  #        username: system
-  #        password: oracPas.28
-  #        schema: SOURCE2
-  #        priority: 1
-  #        active: true
-  #      - name: source_db_15
-  #        url: jdbc:oracle:thin:@//localhost:1521/free
-  #        username: system
-  #        password: oracPas.28
-  #        schema: SOURCE1
-  #        priority: 1
-  #        active: true
-  #      - name: source_db_16
-  #        url: jdbc:oracle:thin:@//localhost:1521/free
-  #        username: system
-  #        password: oracPas.28
-  #        schema: SOURCE2
-  #        priority: 1
-  #        active: true
-  #      - name: source_db_17
-  #        url: jdbc:oracle:thin:@//localhost:1521/free
-  #        username: system
-  #        password: oracPas.28
-  #        schema: SOURCE1
-  #        priority: 1
-  #        active: true
-  #      - name: source_db_18
-  #        url: jdbc:oracle:thin:@//localhost:1521/free
-  #        username: system
-  #        password: oracPas.28
-  #        schema: SOURCE2
-  #        priority: 1
-  #        active: true
-  #      - name: source_db_19
-  #        url: jdbc:oracle:thin:@//localhost:1521/free
-  #        username: system
-  #        password: oracPas.28
-  #        schema: SOURCE1
-  #        priority: 1
-  #        active: true
-  #      - name: source_db_20
-  #        url: jdbc:oracle:thin:@//localhost:1521/free
-  #        username: system
-  #        password: oracPas.28
-  #        schema: SOURCE2
-  #        priority: 1
-  #        active: true
+clean-database-logs:
+  # cron expression, to switch off put value '-'
+  task-cleaner-schedule: 0 0 1 * * ?
+  # delete logs from db that older than X years
+  clean-period: 3
 
-  oracle:
-    tables:
-      - all_col_comments
-      - all_mviews
-      - all_tab_cols
-      - all_tab_comments
-      - ALL_TAB_IDENTITY_COLS
-      - all_tables
-      - all_views
 
-    target-database-property:
-      url: jdbc:postgresql://localhost:5432/target_db?currentSchema=oracle_metadata
-      username: postgres
-      password: kampus
-
-flink:
-  job:
-    name: pg-replication-job
-    parallelism: 1
-    max-retries: 3
-    retry-delay-ms: 1000
-    cron: "0 0 22 * * *"
-
-    checkpoint:
-      interval: 60000 # ???????? ????? ????????? (??)
-      timeout: 30000
-      mode: EXACTLY_ONCE
-    restart-strategy:
-      fixed-delay:
-        attempts: 3
-        delay: 10000
-    buffer-timeout: 100
-    watermark-interval: 10000
+#  databases:
+#    info:
+#      - name: source_db_1
+#        url: jdbc:oracle:thin:@//localhost:1521/free
+#        username: system
+#        password: oracPas.28
+#        schema: source_db_1
+#        priority: 1
+#        active: true
 
 logging:
   level:
