@@ -1,5 +1,6 @@
 package com.oraclereplicator.replicator.service.impl;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.oraclereplicator.replicator.dto.SourceDbConnections;
@@ -34,7 +35,7 @@ public class ReplicationServiceImpl implements ReplicationService {
     private final DbSourcesService dbSourcesService;
     private final SvoiCustomLogger svoiCustomLogger;
     private final DatabaseMetadataRepository databaseRep;
-    private final SchemaMetadataRepository schemaRep; // 🔹 Добавлено
+    private final SchemaMetadataRepository schemaRep;
     private final TableMetadataRepository tableRep;
     private final SqlTemplates sqlTemplates;
 
@@ -50,6 +51,7 @@ public class ReplicationServiceImpl implements ReplicationService {
         String jobId = UUID.randomUUID().toString();
         long startTime = System.nanoTime();
         log.info("Начало репликации Oracle для {} (job_id={})", serviceName, jobId);
+
         truncateTables(serviceName);
 
         SourceDbConnections source = dbSourcesService.getDbConnections()
@@ -61,29 +63,55 @@ public class ReplicationServiceImpl implements ReplicationService {
         int totalSchemas = 0;
         int totalTables = 0;
 
-        // Уровень базы
-        List<String> databases = databaseReplicationOracle(source);
+        try {
+            svoiCustomLogger.logConnectToSource(
+                    source.getHostFromUrl(),
+                    source.getHostFromUrl(),
+                    source.getPortFromUrl(),
+                    source.getDbType()
+            );
 
-        for (String dbName : databases) {
-            //Уровень схем
-            List<String> schemas = schemaReplicationOracle(source, dbName);
-            totalSchemas += schemas.size();
+            List<String> databases = databaseReplicationOracle(source);
 
-            for (String schema : schemas) {
-                //Уровень таблиц
-                totalTables += tableReplicationOracle(source, dbName, schema);
+            for (String dbName : databases) {
+                List<String> schemas = schemaReplicationOracle(source, dbName);
+                totalSchemas += schemas.size();
+
+                for (String schema : schemas) {
+                    totalTables += tableReplicationOracle(source, dbName, schema);
+                }
             }
+
+            double durationSec = (System.nanoTime() - startTime) / 1_000_000_000.0;
+            String summary = String.format(
+                    "Replicated Oracle source [%s]: databases=%d, schemas=%d, tables=%d, duration=%.2fs",
+                    serviceName, databases.size(), totalSchemas, totalTables, durationSec
+            );
+
+            log.info("Репликация Oracle завершена: {}", summary);
+
+            svoiCustomLogger.send(
+                    "replicationJob",
+                    "Replication Finished",
+                    summary,
+                    SvoiSeverityEnum.ONE
+            );
+
+        } catch (SQLException e) {
+            svoiCustomLogger.logAuthError(
+                    source.getHostFromUrl(),
+                    source.getHostFromUrl(),
+                    source.getPortFromUrl(),
+                    source.getDbType(),
+                    source.getUsername(),
+                    e
+            );
+
+            log.error("Ошибка при подключении к источнику {}", source.getName(), e);
+            throw new RuntimeException("Ошибка при подключении к источнику: " + source.getName(), e);
         }
-
-        double durationSec = (System.nanoTime() - startTime) / 1_000_000_000.0;
-        String summary = String.format(
-                "Replicated Oracle source [%s]: databases=%d, schemas=%d, tables=%d, duration=%.2fs",
-                serviceName, databases.size(), totalSchemas, totalTables, durationSec
-        );
-
-        log.info("Репликация Oracle завершена: {}", summary);
-        svoiCustomLogger.send("replicationJob", "Replication Finished", summary, SvoiSeverityEnum.ONE);
     }
+
 
     private void truncateTables(String serviceName) {
         databaseRep.deleteByServiceName(serviceName);
@@ -95,7 +123,7 @@ public class ReplicationServiceImpl implements ReplicationService {
     /**
      *Получаем список DB (уровень database_metadata)
      */
-    private List<String> databaseReplicationOracle(SourceDbConnections source) {
+    private List<String> databaseReplicationOracle(SourceDbConnections source) throws SQLException {
         List<String> databases = new ArrayList<>();
         LocalDateTime now = LocalDateTime.now();
 
@@ -126,7 +154,8 @@ public class ReplicationServiceImpl implements ReplicationService {
             log.info("Реплицировано {} DB Oracle для {}", databases.size(), source.getServiceName());
 
         } catch (SQLException e) {
-            log.error("Ошибка при получении DB из Oracle для {}: {}", source.getName(), e.getMessage(), e);
+            log.error("Ошибка при подключении и получении DB из Oracle для {}: {}", source.getName(), e.getMessage(), e);
+            throw e;
         }
 
         return databases;
@@ -135,7 +164,7 @@ public class ReplicationServiceImpl implements ReplicationService {
     /**
      *Получаем схемы внутри DB
      */
-    private List<String> schemaReplicationOracle(SourceDbConnections source, String dbName) {
+    private List<String> schemaReplicationOracle(SourceDbConnections source, String dbName) throws SQLException {
         List<String> schemas = new ArrayList<>();
         LocalDateTime now = LocalDateTime.now();
 
@@ -149,10 +178,10 @@ public class ReplicationServiceImpl implements ReplicationService {
                 String schemaName = rs.getString("schema_name");
                 long oid = rs.getLong("oid");
                 String fqn = source.getServiceName() + "." + dbName + "." + schemaName;
-                String parentFqn = source.getServiceName() + "." + dbName; // ✅ исправлено
+                String parentFqn = source.getServiceName() + "." + dbName;
 
                 SchemaMetadata schema = new SchemaMetadata();
-                schema.setId(new EntityId(oid, parentFqn)); // ✅ исправлено
+                schema.setId(new EntityId(oid, parentFqn));
                 schema.setFqn(fqn);
                 schema.setServiceName(source.getServiceName());
                 schema.setDbName(dbName);
@@ -168,7 +197,8 @@ public class ReplicationServiceImpl implements ReplicationService {
             log.info("Реплицировано {} схем Oracle для DB {}", schemas.size(), dbName);
 
         } catch (SQLException e) {
-            log.error("Ошибка при получении схем Oracle для {}: {}", dbName, e.getMessage(), e);
+            log.error("Ошибка при подключении и получении схем Oracle для {}: {}", dbName, e.getMessage(), e);
+            throw e;
         }
 
         return schemas;
@@ -177,7 +207,7 @@ public class ReplicationServiceImpl implements ReplicationService {
     /**
      *Получаем таблицы внутри схемы DB
      */
-    private int tableReplicationOracle(SourceDbConnections source, String dbName, String schemaName) {
+    private int tableReplicationOracle(SourceDbConnections source, String dbName, String schemaName) throws SQLException {
         LocalDateTime now = LocalDateTime.now();
         List<TableMetadata> entities = new ArrayList<>();
 
@@ -223,8 +253,9 @@ public class ReplicationServiceImpl implements ReplicationService {
                         table.setHashData(DigestUtils.md5Hex(fqn + jsonColumns + jsonConstraints));
                         entities.add(table);
 
-                    } catch (Exception e) {
-                        log.error("⚠ Ошибка при обработке таблицы Oracle {}: {}", rs.getString("TABLE_NAME"), e.getMessage());
+                    } catch (JsonProcessingException e) {
+                        log.error("Ошибка при обработке таблицы Oracle {}: {}", rs.getString("TABLE_NAME"), e.getMessage());
+                        throw e;
                     }
                 }
             }
@@ -232,8 +263,11 @@ public class ReplicationServiceImpl implements ReplicationService {
             tableRep.saveAll(entities);
             log.info("Реплицировано {} таблиц Oracle для схемы {} в DB {}", entities.size(), schemaName, dbName);
 
-        } catch (Exception e) {
-            log.error("Ошибка при получении таблиц Oracle для схемы {}: {}", schemaName, e.getMessage(), e);
+        } catch (JsonProcessingException e) {
+            log.error("Ошибка обработки JSON при получении таблиц Oracle для схемы {}: {}", schemaName, e.getMessage(), e);
+        } catch (SQLException e) {
+            log.error("Ошибка при подключении и получении таблиц Oracle для схемы {}: {}", schemaName, e.getMessage(), e);
+            throw e;
         }
 
         return entities.size();

@@ -2,9 +2,9 @@
   {
     "name": "oracle_server",
     "service_name": "oracle_server",
-    "db_type": "oracle",
+    "db_type": "Oracle",
     "url": "jdbc:oracle:thin:@//localhost:1521/free",
-    "username": "system",
+    "username": "syste",
     "password": "oracPas.28",
     "schema": "SOURCE2",
     "priority": 1,
