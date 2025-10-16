@@ -65,7 +65,7 @@ spring:
 
 sources:
   connections:
-    file-path: ${CONFIG_DIR:classpath:db-connections.json}
+    file-path: file:${CONFIG_DIR:classpath:db-connections.json}
 
 management:
   endpoints:
@@ -94,17 +94,6 @@ clean-database-logs:
   # delete logs from db that older than X years
   clean-period: 3
 
-
-#  databases:
-#    info:
-#      - name: source_db_1
-#        url: jdbc:oracle:thin:@//localhost:1521/free
-#        username: system
-#        password: oracPas.28
-#        schema: source_db_1
-#        priority: 1
-#        active: true
-
 logging:
   level:
     root: INFO
@@ -115,10 +104,10 @@ logging:
         jdbc: WARN
       hikari: WARN
     com:
-      example:
-        flinkreplication: DEBUG
+      oraclereplicator:
+        replicator: DEBUG
   file:
-    name: logs/flink-replication.log
+    name: logs/replication.log
     max-size: 50MB
     max-history: 7
   pattern:
