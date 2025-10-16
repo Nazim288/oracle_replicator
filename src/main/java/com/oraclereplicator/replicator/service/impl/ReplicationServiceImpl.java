@@ -16,6 +16,8 @@ import com.oraclereplicator.replicator.repository.SchemaMetadataRepository;
 import com.oraclereplicator.replicator.repository.TableMetadataRepository;
 import com.oraclereplicator.replicator.service.DbSourcesService;
 import com.oraclereplicator.replicator.service.ReplicationService;
+import com.oraclereplicator.replicator.service.VaultSecretService;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.digest.DigestUtils;
@@ -39,6 +41,8 @@ public class ReplicationServiceImpl implements ReplicationService {
     private final TableMetadataRepository tableRep;
     private final SqlTemplates sqlTemplates;
 
+    private final VaultSecretService vault;
+
     private static final ObjectMapper objectMapper = new ObjectMapper();
 
     @Async
@@ -54,11 +58,17 @@ public class ReplicationServiceImpl implements ReplicationService {
 
         truncateTables(serviceName);
 
-        SourceDbConnections source = dbSourcesService.getDbConnections()
-                .stream()
-                .filter(s -> s.getName().equals(serviceName))
-                .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("Не найден сервис: " + serviceName));
+        SourceDbConnections source;
+
+        if (vault.isVaultConnected() && vault.serviceSecretsExist(serviceName)) {
+            source = vault.getServiceSecrets(serviceName);
+        } else {
+            source = dbSourcesService.getDbConnections()
+                    .stream()
+                    .filter(s -> s.getName().equals(serviceName))
+                    .findFirst()
+                    .orElseThrow(() -> new IllegalArgumentException("Не найден сервис: " + serviceName));
+        }
 
         int totalSchemas = 0;
         int totalTables = 0;

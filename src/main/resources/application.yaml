@@ -10,9 +10,9 @@ spring:
     port: test_port
 
   datasource:
-    url: jdbc:postgresql://localhost:5432/meta_base?currentSchema=oracle_metadata
-    username: postgres
-    password: kampus
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/meta_base?currentSchema=oracle_metadata}
+    username: ${DB_USER:postgres}
+    password: ${DB_PASSWORD:kampus}
     hikari:
       maximum-pool-size: 20
       connection-timeout: 30000
@@ -26,21 +26,42 @@ spring:
     show-sql: true
     properties:
       hibernate:
-        default_schema: mssql_metadata
+        default_schema: oracle_metadata
 
   flyway:
-    schemas: mssql_metadata
+    schemas: oracle_metadata
     enabled: true
     locations: classpath:db/migration
-    url: jdbc:postgresql://localhost:5432/meta_base?currentSchema=mssql_metadata
-    user: postgres
-    password: kampus
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/meta_base?currentSchema=oracle_metadata}
+    user: ${DB_USER:postgres}
+    password: ${DB_PASSWORD:kampus}
 
   tomcat:
     max-connections: 100 # Максимальное количество соединений
     accept-count: 100 # Максимальное количество потоков
     threads:
       max: 50 # Размер очереди запросов
+
+  # vault config
+  config:
+    import: optional:vault://
+
+  cloud:
+    vault:
+      uri: http://vault:8200
+      authentication: APPROLE
+      app-role:
+        role-id: ${VAULT_ROLE_ID}
+        secret-id: ${VAULT_SECRET_ID}
+      
+      kv:
+        enabled: true
+        backend: secret_v2_t
+        default-context: ord/src/connections
+        application-name: ""
+
+      connection-timeout: 5000
+      read-timeout: 15000
 
 sources:
   connections:
