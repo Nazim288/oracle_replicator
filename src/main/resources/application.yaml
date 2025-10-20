@@ -1,8 +1,21 @@
+# server:
+#   port: 9200
+#   ssl:
+#     key-store: file:/app/cert/certificate.pfx
+#     key-store-password: ${KEYSTORE_PASSWORD}
+#     key-store-type: PKCS12
+#     enabled-protocols: TLSv1.3,TLSv1.2
+#     ciphers: >-
+#       TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+#       TLS_DHE_RSA_WITH_AES_256_GCM_SHA384,
+#       TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA384,
+#       TLS_DHE_RSA_WITH_AES_256_CBC_SHA256
+
 spring:
   application:
     name: oracle-replication-service
-    version: 0.0.1-ORACLE
-    dpt: 912044
+    version: 0.0.1
+    dpt: 9200
     dntdom: GPB
     user: test_user
     ip: test_ip
@@ -45,21 +58,24 @@ spring:
   # vault config
   config:
     import: optional:vault://
-
   cloud:
     vault:
-      uri: http://vault:8200
+      uri: https://vault:8200
       authentication: APPROLE
       app-role:
         role-id: ${VAULT_ROLE_ID}
         secret-id: ${VAULT_SECRET_ID}
-      
+        app-role-path: ${VAULT_MOUNT_POINT}
+      ssl:
+        trust-store: file:/path/to/jks
+        trust-store-password: ${VAULT_JKS_PASS}
+        trust-store-type: JKS
+        enabled: true
       kv:
         enabled: true
         backend: secret_v2_t
-        default-context: ord/src/connections
+        default-context: path/to/secrets
         application-name: ""
-
       connection-timeout: 5000
       read-timeout: 15000
 
