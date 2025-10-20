@@ -76,9 +76,9 @@ public class ReplicationServiceImpl implements ReplicationService {
         try {
             svoiCustomLogger.logConnectToSource(
                     source.getHostFromUrl(),
-                    source.getHostFromUrl(),
                     source.getPortFromUrl(),
-                    source.getDbType()
+                    source.getDbType(),
+                    source.getUsername()
             );
 
             List<String> databases = databaseReplicationOracle(source);

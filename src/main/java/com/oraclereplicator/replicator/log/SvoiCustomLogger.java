@@ -37,18 +37,29 @@ public class SvoiCustomLogger {
         this.logsDatabaseProperties = logsDatabaseProperties;
         this.logRepository = logRepository;
     }
-    public void logConnectToSource(String sourceIp,
-                                   String sourceDns,
+    public void logConnectToSource(String sourceHost,
                                    int sourcePort,
-                                   String dbType) {
+                                   String dbType,
+                                   String duser) {
         try {
             SvoiJournal journal = svoiJournalFactory.getJournalSource();
-            journal.setDhost(sourceDns);
-            journal.setDst(sourceIp);
+            String Dhost;
+            String Dst;
+            if (isIpAddress(sourceHost)) {
+                Dst = sourceHost;
+                Dhost = resolveToOpposite(sourceHost);
+            } else {
+                Dst = resolveToOpposite(sourceHost);
+                Dhost = sourceHost;
+            }
+            journal.setDhost(Dhost);
+            journal.setDst(Dst);
+            journal.setDvchost(Dhost);
             journal.setDpt(sourcePort);
+            journal.setDuser(duser);
 
             String message = String.format("connectTo%s dns=%s ip=%s port=%d",
-                    dbType, sourceDns, sourceIp, sourcePort);
+                    dbType, Dhost, Dst, sourcePort);
 
             sendInternal("connectToSource",
                     "Database Connection",
@@ -155,19 +166,34 @@ public class SvoiCustomLogger {
         // заполняем общие поля журнала
         journal.setDeviceProduct(sysProperties.getName());
         journal.setDeviceVersion(sysProperties.getVersion());
-        journal.setDpt(sysProperties.getDpt());
+        // journal.setDpt(sysProperties.getDpt());
         journal.setDntdom(sysProperties.getDntdom());
         journal.setDeviceEventClassID(deviceEventClassID);
         journal.setName(name);
         journal.setMessage(message);
-        journal.setDhost(localHostName);
-        journal.setDvchost(localHostName);
-        journal.setDst(localHostAddress);
+        // journal.setDhost(localHostName);
+        // journal.setDvchost(localHostName);
+        // journal.setDst(localHostAddress);
         journal.setDuser(sysProperties.getUser());
         journal.setSuser(sysProperties.getUser());
         journal.setApp("");
         journal.setDmac(getMacAddress());
         journal.setSeverity(severity);
+        
+        if (journal.getSrc().trim().isEmpty() || journal.getShost().trim().isEmpty()) {
+            journal.setSrc(localHostAddress);
+            journal.setShost(localHostName);
+        }
+
+        if (journal.getDpt() == 0 || journal.getDpt() == null) {
+            journal.setDpt(sysProperties.getDpt());
+        }
+
+        if (journal.getDhost().trim().isEmpty() || journal.getDst().trim().isEmpty()) {
+            journal.setDhost(localHostName);
+            journal.setDst(localHostAddress);
+            journal.setDvchost(localHostName);
+        }
 
         // логирование в консоль
         try (
@@ -207,5 +233,31 @@ public class SvoiCustomLogger {
             log.error(e.getMessage(), e);
         }
         return String.join(":", addresses);
+    }
+
+    private static boolean isIpAddress(String input) {
+        if (input == null) return false;
+        
+        // Простая проверка на наличие точек (для IPv4) или двоеточий (для IPv6)
+        boolean hasDots = input.chars().filter(ch -> ch == '.').count() == 3;
+        boolean hasColons = input.contains(":");
+        
+        return hasDots || hasColons;
+    }
+
+    private static String resolveToOpposite(String input) {
+        try {
+            InetAddress inetAddress = InetAddress.getByName(input);
+            
+            if (isIpAddress(input)) {
+                // IP -> DNS
+                return inetAddress.getHostName();
+            } else {
+                // DNS -> IP
+                return inetAddress.getHostAddress();
+            }
+        } catch (UnknownHostException e) {
+            return "Unable to resolve: " + input;
+        }
     }
 }

@@ -1,6 +1,5 @@
 package com.oraclereplicator.replicator.service;
 
-import java.util.Collections;
 import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Value;
@@ -36,20 +35,16 @@ public class VaultSecretService {
     public SourceDbConnections getServiceSecrets(String serviceName) {
         String fullPath = buildFullPath(serviceName);
         log.info("Reading secrets from Vault path: {}", fullPath);
-        
         try {
             VaultResponse response = vaultTemplate.read(fullPath);
             if (response != null && response.getData() != null) {
                 @SuppressWarnings("unchecked")
                 Map<String, Object> data = (Map<String, Object>) response.getData().get("data");
-                
                 if (data != null) {
                     ObjectMapper mapper = new ObjectMapper();
-                    
                     // Настройка для обработки примитивных типов
                     mapper.configure(DeserializationFeature.FAIL_ON_NULL_FOR_PRIMITIVES, false);
                     mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
-                    
                     return mapper.convertValue(data, SourceDbConnections.class);
                 }
             }
