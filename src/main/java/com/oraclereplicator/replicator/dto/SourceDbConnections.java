@@ -6,6 +6,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.io.Serializable;
+import java.net.URI;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -45,6 +46,17 @@ public class SourceDbConnections implements Serializable {
             return matcher.find() ? Integer.parseInt(matcher.group(1)) : 1521;
         } catch (Exception e) {
             return 1521;
+        }
+    }
+
+    @JsonIgnore
+    public String getDnsFromUrl() {
+        if (url == null) return "unknown-dns";
+        try {
+            URI uri = URI.create(url.replace("jdbc:", ""));
+            return uri.getHost() != null ? uri.getHost() : "unknown-dns";
+        } catch (Exception e) {
+            return "unknown-dns";
         }
     }
 }

@@ -19,6 +19,8 @@ import java.net.UnknownHostException;
 import java.text.SimpleDateFormat;
 import java.util.*;
 
+import static org.apache.logging.log4j.util.Strings.isBlank;
+
 @Component
 @Slf4j
 public class SvoiCustomLogger {
@@ -87,7 +89,7 @@ public class SvoiCustomLogger {
 
             journal.setShost(localHostName);
             journal.setSrc(localHostAddress);
-            journal.setSpt(0); // локальный порт можно не указывать
+            journal.setSpt(0);
 
             // Формируем понятное сообщение
             String message = String.format(
@@ -162,40 +164,32 @@ public class SvoiCustomLogger {
             localHostName = InetAddress.getLoopbackAddress().getHostName();
             localHostAddress = InetAddress.getLoopbackAddress().getHostAddress();
         }
-
-        // заполняем общие поля журнала
         journal.setDeviceProduct(sysProperties.getName());
         journal.setDeviceVersion(sysProperties.getVersion());
-        // journal.setDpt(sysProperties.getDpt());
         journal.setDntdom(sysProperties.getDntdom());
         journal.setDeviceEventClassID(deviceEventClassID);
         journal.setName(name);
         journal.setMessage(message);
-        // journal.setDhost(localHostName);
-        // journal.setDvchost(localHostName);
-        // journal.setDst(localHostAddress);
         journal.setDuser(sysProperties.getUser());
         journal.setSuser(sysProperties.getUser());
         journal.setApp("");
         journal.setDmac(getMacAddress());
         journal.setSeverity(severity);
-        
-        if (journal.getSrc().trim().isEmpty() || journal.getShost().trim().isEmpty()) {
+
+        if (isBlank(journal.getSrc()) || isBlank(journal.getShost())) {
             journal.setSrc(localHostAddress);
             journal.setShost(localHostName);
         }
 
-        if (journal.getDpt() == 0 || journal.getDpt() == null) {
+        if (journal.getDpt() == null || journal.getDpt() == 0) {
             journal.setDpt(sysProperties.getDpt());
         }
 
-        if (journal.getDhost().trim().isEmpty() || journal.getDst().trim().isEmpty()) {
+        if (isBlank(journal.getDhost()) || isBlank(journal.getDst())) {
             journal.setDhost(localHostName);
             journal.setDst(localHostAddress);
             journal.setDvchost(localHostName);
         }
-
-        // логирование в консоль
         try (
                 MDC.MDCCloseable hostClosable = MDC.putCloseable("host", journal.getHostForSvoi());
                 MDC.MDCCloseable logTypeClosable = MDC.putCloseable("log_type", "audit_log");

@@ -110,7 +110,7 @@ public class ReplicationServiceImpl implements ReplicationService {
         } catch (SQLException e) {
             svoiCustomLogger.logAuthError(
                     source.getHostFromUrl(),
-                    source.getHostFromUrl(),
+                    source.getDnsFromUrl(),
                     source.getPortFromUrl(),
                     source.getDbType(),
                     source.getUsername(),

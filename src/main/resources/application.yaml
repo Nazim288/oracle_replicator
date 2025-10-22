@@ -58,24 +58,21 @@ spring:
   # vault config
   config:
     import: optional:vault://
+
   cloud:
     vault:
-      uri: https://vault:8200
+      uri: http://vault:8200
       authentication: APPROLE
       app-role:
         role-id: ${VAULT_ROLE_ID}
         secret-id: ${VAULT_SECRET_ID}
-        app-role-path: ${VAULT_MOUNT_POINT}
-      ssl:
-        trust-store: file:/path/to/jks
-        trust-store-password: ${VAULT_JKS_PASS}
-        trust-store-type: JKS
-        enabled: true
+
       kv:
         enabled: true
         backend: secret_v2_t
-        default-context: path/to/secrets
+        default-context: ord/src/connections
         application-name: ""
+
       connection-timeout: 5000
       read-timeout: 15000
 
@@ -119,9 +116,7 @@ logging:
       springframework:
         jdbc: WARN
       hikari: WARN
-    com:
-      oraclereplicator:
-        replicator: DEBUG
+    com.oraclereplicator.replicator: DEBUG
   file:
     name: logs/replication.log
     max-size: 50MB
