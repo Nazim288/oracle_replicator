@@ -5,7 +5,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.4.2</version>
+        <version>3.5.3</version>
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
     <groupId>com.oraclereplicator</groupId>
@@ -20,6 +20,7 @@
         <maven.compiler.source>${java.version}</maven.compiler.source>
         <maven.compiler.target>${java.version}</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <spring-cloud-vault.version>4.3.0</spring-cloud-vault.version>
     </properties>
     <dependencies>
         <!-- Spring Boot starters -->
@@ -52,7 +53,7 @@
         <dependency>
 			<groupId>org.springframework.cloud</groupId>
 			<artifactId>spring-cloud-starter-vault-config</artifactId>
-            <version>4.3.0</version>
+            <version>${spring-cloud-vault.version}</version>
 		</dependency>
 
         <!-- Логирование -->
