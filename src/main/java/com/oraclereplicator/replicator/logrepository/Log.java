@@ -6,8 +6,7 @@ import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.Id;
 import jakarta.persistence.*;
 
-import java.util.Date;
-
+import java.time.LocalDateTime;
 
 @Data
 @AllArgsConstructor
@@ -17,11 +16,11 @@ public class Log {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
     @Temporal(TemporalType.TIMESTAMP)
-    private Date created;
+    private LocalDateTime created;
     private String log;
     private String type;
 
-    public Log(Date created, String log, String type) {
+    public Log(LocalDateTime created, String log, String type) {
         this.created = created;
         this.log = log;
         this.type = type;
