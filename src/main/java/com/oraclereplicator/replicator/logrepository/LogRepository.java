@@ -10,7 +10,6 @@ import java.sql.Timestamp;
 
 @Repository
 public class LogRepository {
-
     private final JdbcTemplate logsJdbcTemplate;
     private final CefLogFileService cefLogFileService;
     private final LogsDatabaseProperties logsDatabaseProperties;
@@ -22,7 +21,6 @@ public class LogRepository {
         this.logsDatabaseProperties = logsDatabaseProperties;
     }
 
-
     public Log findLatestByType(String type, String host) {
         String table = logsDatabaseProperties.getTable().trim();
         String sql = String.format("""
@@ -33,7 +31,6 @@ public class LogRepository {
                 ORDER BY l.created DESC
                 LIMIT 1
                 """, table);
-
 
         return logsJdbcTemplate.query(sql, new Object[]{type, "%" + host + "%"}, rs -> {
             if (rs.next()) {
@@ -60,7 +57,6 @@ public class LogRepository {
                 logEntity.getLog(),
                 logEntity.getType());
 
-        cefLogFileService.writeToFile(logEntity.getCreated(), logEntity.getLog());
-        cefLogFileService.cleanupOldLogs();
+        cefLogFileService.writeToFile(logEntity.getLog());
     }
 }

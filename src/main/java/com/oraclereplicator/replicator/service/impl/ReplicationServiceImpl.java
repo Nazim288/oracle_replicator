@@ -33,6 +33,7 @@ import java.util.*;
 @RequiredArgsConstructor
 @Slf4j
 public class ReplicationServiceImpl implements ReplicationService {
+    private static final ObjectMapper objectMapper = new ObjectMapper();
 
     private final DbSourcesService dbSourcesService;
     private final SvoiCustomLogger svoiCustomLogger;
@@ -40,10 +41,7 @@ public class ReplicationServiceImpl implements ReplicationService {
     private final SchemaMetadataRepository schemaRep;
     private final TableMetadataRepository tableRep;
     private final SqlTemplates sqlTemplates;
-
     private final VaultSecretService vault;
-
-    private static final ObjectMapper objectMapper = new ObjectMapper();
 
     @Async
     public void startReplicationAsync(String serviceName) {
@@ -52,12 +50,6 @@ public class ReplicationServiceImpl implements ReplicationService {
 
     @Override
     public void startReplication(String serviceName) {
-        String jobId = UUID.randomUUID().toString();
-        long startTime = System.nanoTime();
-        log.info("Начало репликации Oracle для {} (job_id={})", serviceName, jobId);
-
-        truncateTables(serviceName);
-
         SourceDbConnections source;
 
         if (vault.isVaultConnected() && vault.serviceSecretsExist(serviceName)) {
@@ -69,9 +61,7 @@ public class ReplicationServiceImpl implements ReplicationService {
                     .findFirst()
                     .orElseThrow(() -> new IllegalArgumentException("Не найден сервис: " + serviceName));
         }
-
-        int totalSchemas = 0;
-        int totalTables = 0;
+        truncateTables(serviceName);
 
         try {
             svoiCustomLogger.logConnectToSource(
@@ -84,50 +74,58 @@ public class ReplicationServiceImpl implements ReplicationService {
             List<String> databases = databaseReplicationOracle(source);
 
             for (String dbName : databases) {
-                List<String> schemas = schemaReplicationOracle(source, dbName);
-                totalSchemas += schemas.size();
+                try {
+                    List<String> schemas = schemaReplicationOracle(source, dbName);
 
-                for (String schema : schemas) {
-                    totalTables += tableReplicationOracle(source, dbName, schema);
+                    for (String schema : schemas) {
+                        try {
+                            tableReplicationOracle(source, dbName, schema);
+                        } catch (Exception e) {
+                            log.error("Ошибка в tableReplicationOracle(db={}, schema={}): {}",
+                                    dbName, schema, e.getMessage());
+                        }
+                    }
+
+                } catch (Exception e) {
+                    log.error("Ошибка в schemaReplicationOracle(db={}): {}", dbName, e.getMessage());
                 }
             }
 
-            double durationSec = (System.nanoTime() - startTime) / 1_000_000_000.0;
-            String summary = String.format(
-                    "Replicated Oracle source [%s]: databases=%d, schemas=%d, tables=%d, duration=%.2fs",
-                    serviceName, databases.size(), totalSchemas, totalTables, durationSec
-            );
 
-            log.info("Репликация Oracle завершена: {}", summary);
+            log.info("Репликация Oracle завершена: {}", serviceName);
 
-            svoiCustomLogger.send(
+            svoiCustomLogger.sendInternal(
                     "replicationJob",
                     "Replication Finished",
-                    summary,
+                    String.format("Replicated Oracle source [%s]: databases=%d", serviceName, databases.size()),
                     SvoiSeverityEnum.ONE
             );
 
         } catch (SQLException e) {
-            svoiCustomLogger.logAuthError(
+            svoiCustomLogger.logDbConnectionError(
                     source.getHostFromUrl(),
-                    source.getDnsFromUrl(),
                     source.getPortFromUrl(),
                     source.getDbType(),
                     source.getUsername(),
                     e
             );
-
             log.error("Ошибка при подключении к источнику {}", source.getName(), e);
             throw new RuntimeException("Ошибка при подключении к источнику: " + source.getName(), e);
         }
     }
 
-
     private void truncateTables(String serviceName) {
+        svoiCustomLogger.sendInternal(
+                "replicationDataReset",
+                "replication Data Reset",
+                "serviceName=" + serviceName,
+                SvoiSeverityEnum.ONE
+        );
+
         databaseRep.deleteByServiceName(serviceName);
         schemaRep.deleteByServiceName(serviceName);
         tableRep.deleteByServiceName(serviceName);
-        log.info("Метаданные очищены для {}", serviceName);
+        log.info("Truncated metadata tables for service={}", serviceName);
     }
 
     /**
@@ -217,7 +215,7 @@ public class ReplicationServiceImpl implements ReplicationService {
     /**
      *Получаем таблицы внутри схемы DB
      */
-    private int tableReplicationOracle(SourceDbConnections source, String dbName, String schemaName) throws SQLException {
+    private void tableReplicationOracle(SourceDbConnections source, String dbName, String schemaName) throws SQLException {
         LocalDateTime now = LocalDateTime.now();
         List<TableMetadata> entities = new ArrayList<>();
 
@@ -279,7 +277,5 @@ public class ReplicationServiceImpl implements ReplicationService {
             log.error("Ошибка при подключении и получении таблиц Oracle для схемы {}: {}", schemaName, e.getMessage(), e);
             throw e;
         }
-
-        return entities.size();
     }
 }
