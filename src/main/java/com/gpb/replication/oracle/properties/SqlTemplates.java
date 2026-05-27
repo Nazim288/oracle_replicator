@@ -33,7 +33,7 @@ public class SqlTemplates {
      * Таблицы и вьюхи для конкретной схемы
      */
     private final String tableSql = """
-            SELECT 
+            SELECT
                 t.owner AS SCHEMA_NAME,
                 t.table_name AS TABLE_NAME,
                 'REGULAR' AS TABLE_TYPE,
@@ -41,24 +41,26 @@ public class SqlTemplates {
                 NULL AS DESCRIPTION,
                 col_data.COLUMNS_JSON,
                 cons_data.TABLE_CONSTRAINTS_JSON
-            FROM all_tables t
+            FROM dba_tables t
 
             OUTER APPLY (
                 SELECT JSON_ARRAYAGG(
                     JSON_OBJECT(
                         'name' VALUE c.column_name,
                         'dataType' VALUE c.data_type,
-                        'dataTypeDisplay' VALUE 
-                            CASE 
+                        'dataTypeDisplay' VALUE
+                            CASE
                                 WHEN c.data_type IN ('VARCHAR2','CHAR','NVARCHAR2','NCHAR')
-                                     THEN c.data_type || '(' || c.data_length || ')'
+                                    THEN c.data_type || '(' || c.data_length || ')'
                                 WHEN c.data_type = 'NUMBER'
-                                     THEN c.data_type ||
-                                          CASE 
-                                              WHEN c.data_precision IS NOT NULL THEN '(' || c.data_precision ||
-                                                  CASE WHEN c.data_scale IS NOT NULL THEN ',' || c.data_scale ELSE '' END || ')'
-                                              ELSE ''
-                                          END
+                                    THEN c.data_type ||
+                                        CASE
+                                            WHEN c.data_precision IS NOT NULL THEN
+                                                '(' || c.data_precision ||
+                                                CASE WHEN c.data_scale IS NOT NULL THEN ',' || c.data_scale ELSE '' END ||
+                                                ')'
+                                            ELSE ''
+                                        END
                                 ELSE c.data_type
                             END,
                         'dataLength' VALUE c.data_length,
@@ -67,37 +69,41 @@ public class SqlTemplates {
                     )
                     RETURNING CLOB
                 ) AS COLUMNS_JSON
-                FROM all_tab_columns c
-                WHERE c.owner = t.owner AND c.table_name = t.table_name
+                FROM dba_tab_columns c
+                WHERE c.owner = t.owner
+                AND c.table_name = t.table_name
             ) col_data
 
-                    OUTER APPLY (
-                        SELECT JSON_ARRAYAGG(
-                            JSON_OBJECT(
-                                'constraintType' VALUE CASE ac.constraint_type
-                                    WHEN 'P' THEN 'PRIMARY_KEY'
-                                    WHEN 'R' THEN 'FOREIGN_KEY'
-                                    WHEN 'U' THEN 'UNIQUE'
-                                    ELSE NULL
-                                END,
-                                'columns' VALUE (
-                                    SELECT JSON_ARRAYAGG(acc.column_name RETURNING CLOB)
-                                    FROM all_cons_columns acc
-                                    WHERE acc.owner = ac.owner AND acc.constraint_name = ac.constraint_name
-                                ) FORMAT JSON
-                            )
-                            RETURNING CLOB
-                        ) AS TABLE_CONSTRAINTS_JSON
-                        FROM all_constraints ac
-                        WHERE ac.owner = t.owner
-                        AND ac.table_name = t.table_name
-                        AND ac.constraint_type IN ('P','R','U')
-                    ) cons_data
+            OUTER APPLY (
+                SELECT JSON_ARRAYAGG(
+                    JSON_OBJECT(
+                        'constraintType' VALUE CASE ac.constraint_type
+                            WHEN 'P' THEN 'PRIMARY_KEY'
+                            WHEN 'R' THEN 'FOREIGN_KEY'
+                            WHEN 'U' THEN 'UNIQUE'
+                            ELSE NULL
+                        END,
+                        'columns' VALUE (
+                            SELECT JSON_ARRAYAGG(acc.column_name RETURNING CLOB)
+                            FROM dba_cons_columns acc
+                            WHERE acc.owner = ac.owner
+                            AND acc.constraint_name = ac.constraint_name
+                            AND acc.table_name = ac.table_name
+                        ) FORMAT JSON
+                    )
+                    RETURNING CLOB
+                ) AS TABLE_CONSTRAINTS_JSON
+                FROM dba_constraints ac
+                WHERE ac.owner = t.owner
+                AND ac.table_name = t.table_name
+                AND ac.constraint_type IN ('P','R','U')
+            ) cons_data
+
             WHERE t.owner = ?
 
             UNION ALL
 
-            SELECT 
+            SELECT
                 v.owner AS SCHEMA_NAME,
                 v.view_name AS TABLE_NAME,
                 'VIEW' AS TABLE_TYPE,
@@ -105,7 +111,8 @@ public class SqlTemplates {
                 NULL AS DESCRIPTION,
                 col_data.COLUMNS_JSON,
                 NULL AS TABLE_CONSTRAINTS_JSON
-            FROM all_views v
+            FROM dba_views v
+
             OUTER APPLY (
                 SELECT JSON_ARRAYAGG(
                     JSON_OBJECT(
@@ -118,14 +125,16 @@ public class SqlTemplates {
                     )
                     RETURNING CLOB
                 ) AS COLUMNS_JSON
-                FROM all_tab_columns c
-                WHERE c.owner = v.owner AND c.table_name = v.view_name
+                FROM dba_tab_columns c
+                WHERE c.owner = v.owner
+                AND c.table_name = v.view_name
             ) col_data
+
             WHERE v.owner = ?
 
             UNION ALL
 
-            SELECT 
+            SELECT
                 v.owner AS SCHEMA_NAME,
                 v.mview_name AS TABLE_NAME,
                 'MATERIALIZED VIEW' AS TABLE_TYPE,
@@ -133,8 +142,9 @@ public class SqlTemplates {
                 NULL AS DESCRIPTION,
                 col_data.COLUMNS_JSON,
                 NULL AS TABLE_CONSTRAINTS_JSON
-            FROM all_mviews v
-            LEFT OUTER JOIN LATERAL (
+            FROM dba_mviews v
+
+            OUTER APPLY (
                 SELECT JSON_ARRAYAGG(
                     JSON_OBJECT(
                         'name' VALUE c.column_name,
@@ -146,10 +156,11 @@ public class SqlTemplates {
                     )
                     RETURNING CLOB
                 ) AS COLUMNS_JSON
-                FROM all_tab_columns c
-                WHERE c.owner = v.owner 
-                AND c.table_name = v.mview_name  -- Используем mview_name
-            ) col_data ON 1=1
+                FROM dba_tab_columns c
+                WHERE c.owner = v.owner
+                AND c.table_name = v.mview_name
+            ) col_data
+
             WHERE v.owner = ?
             """;
 
