@@ -1,20 +1,24 @@
 package com.gpb.replication.oracle.config;
 
-import lombok.AllArgsConstructor;
+import lombok.RequiredArgsConstructor;
 
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.jdbc.DataSourceProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
 
 import javax.sql.DataSource;
 
 @Configuration
-@AllArgsConstructor
+@RequiredArgsConstructor
 public class DatabaseConfig {
+
     private final DataSourceProperties dataSourceProperties;
-    @Bean
+
+    @Bean(name = "mainDataSource")
     @Primary
     public DataSource mainDataSource() {
         DriverManagerDataSource dataSource = new DriverManagerDataSource();
@@ -23,5 +27,11 @@ public class DatabaseConfig {
         dataSource.setUsername(dataSourceProperties.getUsername());
         dataSource.setPassword(dataSourceProperties.getPassword());
         return dataSource;
+    }
+
+    @Bean(name = "mainJdbcTemplate")
+    @Primary
+    public JdbcTemplate mainJdbcTemplate(@Qualifier("mainDataSource") DataSource dataSource) {
+        return new JdbcTemplate(dataSource);
     }
 }

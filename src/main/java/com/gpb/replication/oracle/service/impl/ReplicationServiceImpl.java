@@ -74,7 +74,7 @@ public class ReplicationServiceImpl implements ReplicationService {
                 (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """;
 
-    private final JdbcTemplate jdbcTemplate;
+    private final JdbcTemplate mainJdbcTemplate;
 
     private final DbSourcesService dbSourcesService;
     private final SvoiCustomLogger svoiCustomLogger;
@@ -382,7 +382,7 @@ public class ReplicationServiceImpl implements ReplicationService {
             return;
         }
 
-        jdbcTemplate.batchUpdate(INSERT_SCHEMA_SQL, batch, batch.size(), (ps, schema) -> {
+        mainJdbcTemplate.batchUpdate(INSERT_SCHEMA_SQL, batch, batch.size(), (ps, schema) -> {
             ps.setLong(1, schema.getId().getId());
             ps.setString(2, schema.getId().getParentFqn());
             ps.setString(3, schema.getFqn());
@@ -399,7 +399,7 @@ public class ReplicationServiceImpl implements ReplicationService {
             return;
         }
 
-        jdbcTemplate.batchUpdate(INSERT_TABLE_SQL, batch, batch.size(), (ps, table) -> {
+        mainJdbcTemplate.batchUpdate(INSERT_TABLE_SQL, batch, batch.size(), (ps, table) -> {
             ps.setLong(1, table.getId().getId());
             ps.setString(2, table.getId().getParentFqn());
             ps.setString(3, table.getFqn());
