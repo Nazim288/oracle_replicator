@@ -134,37 +134,38 @@ public class ReplicationServiceImpl implements ReplicationService {
         List<String> databases = new ArrayList<>();
         LocalDateTime now = LocalDateTime.now();
 
-        try (Connection conn = DriverManager.getConnection(source.getUrl(), source.getUsername(), source.getPassword());
-             PreparedStatement stmt = conn.prepareStatement(sqlTemplates.getDatabaseSql());
-             ResultSet rs = stmt.executeQuery()) {
+        for (String url : source.getUrl()) {
+            try (Connection conn = DriverManager.getConnection(url, source.getUsername(), source.getPassword());
+                PreparedStatement stmt = conn.prepareStatement(sqlTemplates.getDatabaseSql());
+                ResultSet rs = stmt.executeQuery()) {
 
-            List<DatabaseMetadata> entities = new ArrayList<>();
+                List<DatabaseMetadata> entities = new ArrayList<>();
 
-            while (rs.next()) {
-                String dbName = rs.getString("db_name");
-                long oid = rs.getLong("oid");
-                String fqn = source.getServiceName() + "." + dbName;
+                while (rs.next()) {
+                    String dbName = rs.getString("db_name");
+                    long oid = rs.getLong("oid");
+                    String fqn = source.getServiceName() + "." + dbName;
 
-                DatabaseMetadata db = new DatabaseMetadata();
-                db.setId(new EntityId(oid, source.getServiceName()));
-                db.setFqn(fqn);
-                db.setName(dbName);
-                db.setServiceName(source.getServiceName());
-                db.setCreatedAt(now);
-                db.setHashData(DigestUtils.md5Hex(fqn));
+                    DatabaseMetadata db = new DatabaseMetadata();
+                    db.setId(new EntityId(oid, source.getServiceName()));
+                    db.setFqn(fqn);
+                    db.setName(dbName);
+                    db.setServiceName(source.getServiceName());
+                    db.setCreatedAt(now);
+                    db.setHashData(DigestUtils.md5Hex(fqn));
 
-                databases.add(dbName);
-                entities.add(db);
+                    databases.add(dbName);
+                    entities.add(db);
+                }
+
+                databaseRep.saveAll(entities);
+                log.info("Реплицировано {} DB Oracle для {}", databases.size(), source.getServiceName());
+
+            } catch (SQLException e) {
+                log.error("Ошибка при подключении и получении DB из Oracle для {}: {}", source.getName(), e.getMessage(), e);
+                throw e;
             }
-
-            databaseRep.saveAll(entities);
-            log.info("Реплицировано {} DB Oracle для {}", databases.size(), source.getServiceName());
-
-        } catch (SQLException e) {
-            log.error("Ошибка при подключении и получении DB из Oracle для {}: {}", source.getName(), e.getMessage(), e);
-            throw e;
         }
-
         return databases;
     }
 
@@ -175,37 +176,39 @@ public class ReplicationServiceImpl implements ReplicationService {
         List<String> schemas = new ArrayList<>();
         LocalDateTime now = LocalDateTime.now();
 
-        try (Connection conn = DriverManager.getConnection(source.getUrl(), source.getUsername(), source.getPassword());
-             PreparedStatement stmt = conn.prepareStatement(sqlTemplates.getSchemaSql());
-             ResultSet rs = stmt.executeQuery()) {
+        for (String url : source.getUrl()) {
+            try (Connection conn = DriverManager.getConnection(url, source.getUsername(), source.getPassword());
+                PreparedStatement stmt = conn.prepareStatement(sqlTemplates.getSchemaSql());
+                ResultSet rs = stmt.executeQuery()) {
 
-            List<SchemaMetadata> entities = new ArrayList<>();
+                List<SchemaMetadata> entities = new ArrayList<>();
 
-            while (rs.next()) {
-                String schemaName = rs.getString("schema_name");
-                long oid = rs.getLong("oid");
-                String fqn = source.getServiceName() + "." + dbName + "." + schemaName;
-                String parentFqn = source.getServiceName() + "." + dbName;
+                while (rs.next()) {
+                    String schemaName = rs.getString("schema_name");
+                    long oid = rs.getLong("oid");
+                    String fqn = source.getServiceName() + "." + dbName + "." + schemaName;
+                    String parentFqn = source.getServiceName() + "." + dbName;
 
-                SchemaMetadata schema = new SchemaMetadata();
-                schema.setId(new EntityId(oid, parentFqn));
-                schema.setFqn(fqn);
-                schema.setServiceName(source.getServiceName());
-                schema.setDbName(dbName);
-                schema.setName(schemaName);
-                schema.setCreatedAt(now);
-                schema.setHashData(DigestUtils.md5Hex(fqn));
+                    SchemaMetadata schema = new SchemaMetadata();
+                    schema.setId(new EntityId(oid, parentFqn));
+                    schema.setFqn(fqn);
+                    schema.setServiceName(source.getServiceName());
+                    schema.setDbName(dbName);
+                    schema.setName(schemaName);
+                    schema.setCreatedAt(now);
+                    schema.setHashData(DigestUtils.md5Hex(fqn));
 
-                schemas.add(schemaName);
-                entities.add(schema);
+                    schemas.add(schemaName);
+                    entities.add(schema);
+                }
+
+                schemaRep.saveAll(entities);
+                log.info("Реплицировано {} схем Oracle для DB {}", schemas.size(), dbName);
+
+            } catch (SQLException e) {
+                log.error("Ошибка при подключении и получении схем Oracle для {}: {}", dbName, e.getMessage(), e);
+                throw e;
             }
-
-            schemaRep.saveAll(entities);
-            log.info("Реплицировано {} схем Oracle для DB {}", schemas.size(), dbName);
-
-        } catch (SQLException e) {
-            log.error("Ошибка при подключении и получении схем Oracle для {}: {}", dbName, e.getMessage(), e);
-            throw e;
         }
 
         return schemas;
@@ -218,64 +221,66 @@ public class ReplicationServiceImpl implements ReplicationService {
         LocalDateTime now = LocalDateTime.now();
         List<TableMetadata> entities = new ArrayList<>();
 
-        try (Connection conn = DriverManager.getConnection(source.getUrl(), source.getUsername(), source.getPassword());
-             PreparedStatement stmt = conn.prepareStatement(sqlTemplates.getTableSql())) {
+        for (String url : source.getUrl()) {
+            try (Connection conn = DriverManager.getConnection(url, source.getUsername(), source.getPassword());
+                PreparedStatement stmt = conn.prepareStatement(sqlTemplates.getTableSql())) {
 
-            stmt.setString(1, schemaName);
-            stmt.setString(2, schemaName);
-            stmt.setString(3, schemaName);
+                stmt.setString(1, schemaName);
+                stmt.setString(2, schemaName);
+                stmt.setString(3, schemaName);
 
-            try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
-                    try {
-                        String schema = rs.getString("SCHEMA_NAME");
-                        String tableName = rs.getString("TABLE_NAME");
-                        String tableType = rs.getString("TABLE_TYPE");
-                        String viewDefinition = rs.getString("VIEW_DEFINITION");
+                try (ResultSet rs = stmt.executeQuery()) {
+                    while (rs.next()) {
+                        try {
+                            String schema = rs.getString("SCHEMA_NAME");
+                            String tableName = rs.getString("TABLE_NAME");
+                            String tableType = rs.getString("TABLE_TYPE");
+                            String viewDefinition = rs.getString("VIEW_DEFINITION");
 
-                        String fqn = String.join(".", source.getServiceName(), dbName, schema, tableName);
-                        String parentFqn = source.getServiceName() + "." + dbName + "." + schema;
+                            String fqn = String.join(".", source.getServiceName(), dbName, schema, tableName);
+                            String parentFqn = source.getServiceName() + "." + dbName + "." + schema;
 
-                        long oid = new BigInteger(DigestUtils.md5Hex(fqn).substring(0, 8), 16).longValue();
+                            long oid = new BigInteger(DigestUtils.md5Hex(fqn).substring(0, 8), 16).longValue();
 
-                        TableMetadata table = new TableMetadata();
-                        table.setId(new EntityId(oid, parentFqn));
-                        table.setFqn(fqn);
-                        table.setDbName(dbName);
-                        table.setSchemaName(schema);
-                        table.setName(tableName);
-                        table.setServiceName(source.getServiceName());
-                        table.setDescription(rs.getString("DESCRIPTION"));
-                        table.setCreatedAt(now);
+                            TableMetadata table = new TableMetadata();
+                            table.setId(new EntityId(oid, parentFqn));
+                            table.setFqn(fqn);
+                            table.setDbName(dbName);
+                            table.setSchemaName(schema);
+                            table.setName(tableName);
+                            table.setServiceName(source.getServiceName());
+                            table.setDescription(rs.getString("DESCRIPTION"));
+                            table.setCreatedAt(now);
 
-                        String jsonColumns = rs.getString("COLUMNS_JSON");
-                        String jsonConstraints = rs.getString("TABLE_CONSTRAINTS_JSON");
+                            String jsonColumns = rs.getString("COLUMNS_JSON");
+                            String jsonConstraints = rs.getString("TABLE_CONSTRAINTS_JSON");
 
-                        ObjectNode data = objectMapper.createObjectNode();
-                        data.put("tableType", tableType);
-                        data.put("viewDefinition", viewDefinition);
-                        data.set("columns", objectMapper.readTree(jsonColumns != null ? jsonColumns : "[]"));
-                        data.set("tableConstraints", objectMapper.readTree(jsonConstraints != null ? jsonConstraints : "[]"));
+                            ObjectNode data = objectMapper.createObjectNode();
+                            data.put("tableType", tableType);
+                            data.put("viewDefinition", viewDefinition);
+                            data.set("columns", objectMapper.readTree(jsonColumns != null ? jsonColumns : "[]"));
+                            data.set("tableConstraints", objectMapper.readTree(jsonConstraints != null ? jsonConstraints : "[]"));
 
-                        table.setData(data);
-                        table.setHashData(DigestUtils.md5Hex(fqn + jsonColumns + jsonConstraints));
-                        entities.add(table);
+                            table.setData(data);
+                            table.setHashData(DigestUtils.md5Hex(fqn + jsonColumns + jsonConstraints));
+                            entities.add(table);
 
-                    } catch (JsonProcessingException e) {
-                        log.error("Ошибка при обработке таблицы Oracle {}: {}", rs.getString("TABLE_NAME"), e.getMessage());
-                        throw e;
+                        } catch (JsonProcessingException e) {
+                            log.error("Ошибка при обработке таблицы Oracle {}: {}", rs.getString("TABLE_NAME"), e.getMessage());
+                            throw e;
+                        }
                     }
                 }
+
+                saveTablesInBatches(entities);
+                log.info("Реплицировано {} таблиц Oracle для схемы {} в DB {}", entities.size(), schemaName, dbName);
+
+            } catch (JsonProcessingException e) {
+                log.error("Ошибка обработки JSON при получении таблиц Oracle для схемы {}: {}", schemaName, e.getMessage(), e);
+            } catch (SQLException e) {
+                log.error("Ошибка при подключении и получении таблиц Oracle для схемы {}: {}", schemaName, e.getMessage(), e);
+                throw e;
             }
-
-            saveTablesInBatches(entities);
-            log.info("Реплицировано {} таблиц Oracle для схемы {} в DB {}", entities.size(), schemaName, dbName);
-
-        } catch (JsonProcessingException e) {
-            log.error("Ошибка обработки JSON при получении таблиц Oracle для схемы {}: {}", schemaName, e.getMessage(), e);
-        } catch (SQLException e) {
-            log.error("Ошибка при подключении и получении таблиц Oracle для схемы {}: {}", schemaName, e.getMessage(), e);
-            throw e;
         }
     }
 

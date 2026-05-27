@@ -6,7 +6,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.io.Serializable;
-import java.net.URI;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -18,19 +18,17 @@ public class SourceDbConnections implements Serializable {
     private String serviceName;
     @JsonProperty("db_type")
     private String dbType;
-    private String url;
+    private List<String> url;
     private String username;
     private String password;
-    private boolean active;
-    private String schema;
-    private int priority;
 
     @JsonIgnore
     public String getHostFromUrl() {
         if (url == null) return "unknown-host";
         try {
+            String urlFirst = url.get(0);
             Pattern pattern = Pattern.compile("@/?/?([^:/]+)");
-            Matcher matcher = pattern.matcher(url);
+            Matcher matcher = pattern.matcher(urlFirst);
             return matcher.find() ? matcher.group(1) : "unknown-host";
         } catch (Exception e) {
             return "unknown-host";
@@ -41,22 +39,12 @@ public class SourceDbConnections implements Serializable {
     public int getPortFromUrl() {
         if (url == null) return -1;
         try {
+            String urlFirst = url.get(0);
             Pattern pattern = Pattern.compile(":(\\d+)");
-            Matcher matcher = pattern.matcher(url);
+            Matcher matcher = pattern.matcher(urlFirst);
             return matcher.find() ? Integer.parseInt(matcher.group(1)) : 1521;
         } catch (Exception e) {
             return 1521;
-        }
-    }
-
-    @JsonIgnore
-    public String getDnsFromUrl() {
-        if (url == null) return "unknown-dns";
-        try {
-            URI uri = URI.create(url.replace("jdbc:", ""));
-            return uri.getHost() != null ? uri.getHost() : "unknown-dns";
-        } catch (Exception e) {
-            return "unknown-dns";
         }
     }
 }
