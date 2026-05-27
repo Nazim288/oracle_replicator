@@ -23,7 +23,7 @@ spring:
     port: test_port
 
   datasource:
-    url: ${DB_URL:jdbc:postgresql://localhost:5432/meta_base?currentSchema=oracle_metadata}
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/meta_base?currentSchema=oracle_metadata?reWriteBatchedInserts=true}
     username: ${DB_USER:postgres}
     password: ${DB_PASSWORD:kampus}
     hikari:
@@ -36,10 +36,15 @@ spring:
   jpa:
     hibernate:
       ddl-auto: none
-    show-sql: true
+    show-sql: false
     properties:
       hibernate:
         default_schema: oracle_metadata
+        jdbc:
+          batch_size: 500
+          batch_versioned_data: true
+        order_inserts: true
+        order_updates: true
 
   flyway:
     schemas: oracle_metadata
