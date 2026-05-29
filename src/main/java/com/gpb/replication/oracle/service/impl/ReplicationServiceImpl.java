@@ -27,7 +27,6 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.postgresql.util.PGobject;
 
-import java.math.BigInteger;
 import java.sql.*;
 import java.time.LocalDateTime;
 import java.util.*;
@@ -343,18 +342,18 @@ public class ReplicationServiceImpl implements ReplicationService {
             LocalDateTime now
     ) throws SQLException, JsonProcessingException {
 
-        String schema = rs.getString("SCHEMA_NAME");
-        String tableName = rs.getString("TABLE_NAME");
-        String tableType = rs.getString("TABLE_TYPE");
-        String viewDefinition = rs.getString("VIEW_DEFINITION");
+        String schema = cleanText(rs.getString("SCHEMA_NAME"));
+        String tableName = cleanText(rs.getString("TABLE_NAME"));
+        String tableType = cleanText(rs.getString("TABLE_TYPE"));
+        String viewDefinition = cleanText(rs.getString("VIEW_DEFINITION"));        
 
         String fqn = String.join(".", serviceName, dbName, schema, tableName);
         String parentFqn = serviceName + "." + dbName + "." + schema;
 
-        long oid = new BigInteger(DigestUtils.md5Hex(fqn).substring(0, 8), 16).longValue();
+        long oid = rs.getLong("OID");
 
-        String jsonColumns = rs.getString("COLUMNS_JSON");
-        String jsonConstraints = rs.getString("TABLE_CONSTRAINTS_JSON");
+        String jsonColumns = cleanText(rs.getString("COLUMNS_JSON"));
+        String jsonConstraints = cleanText(rs.getString("TABLE_CONSTRAINTS_JSON"));
 
         ObjectNode data = objectMapper.createObjectNode();
         data.put("tableType", tableType);
@@ -369,7 +368,7 @@ public class ReplicationServiceImpl implements ReplicationService {
         table.setSchemaName(schema);
         table.setName(tableName);
         table.setServiceName(serviceName);
-        table.setDescription(rs.getString("DESCRIPTION"));
+        table.setDescription(cleanText(rs.getString("DESCRIPTION")));
         table.setCreatedAt(now);
         table.setData(data);
         table.setHashData(DigestUtils.md5Hex(fqn + jsonColumns + jsonConstraints));
@@ -419,5 +418,14 @@ public class ReplicationServiceImpl implements ReplicationService {
         jsonObject.setType("jsonb");
         jsonObject.setValue(jsonNode == null ? "{}" : jsonNode.toString());
         return jsonObject;
+    }
+
+    private static String cleanText(String value) {
+        if (value == null) {
+            return null;
+        }
+
+        // Удаляет реальный null-character: char 0x00
+        return value.replace("\u0000", "");
     }
 }

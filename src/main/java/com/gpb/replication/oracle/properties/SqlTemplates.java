@@ -34,6 +34,7 @@ public class SqlTemplates {
      */
     private final String tableSql = """
             SELECT
+                o.object_id AS OID,
                 t.owner AS SCHEMA_NAME,
                 t.table_name AS TABLE_NAME,
                 'REGULAR' AS TABLE_TYPE,
@@ -42,6 +43,10 @@ public class SqlTemplates {
                 col_data.COLUMNS_JSON,
                 cons_data.TABLE_CONSTRAINTS_JSON
             FROM dba_tables t
+            JOIN dba_objects o
+                ON o.owner = t.owner
+            AND o.object_name = t.table_name
+            AND o.object_type = 'TABLE'
 
             OUTER APPLY (
                 SELECT JSON_ARRAYAGG(
@@ -104,6 +109,7 @@ public class SqlTemplates {
             UNION ALL
 
             SELECT
+                o.object_id AS OID,
                 v.owner AS SCHEMA_NAME,
                 v.view_name AS TABLE_NAME,
                 'VIEW' AS TABLE_TYPE,
@@ -112,6 +118,10 @@ public class SqlTemplates {
                 col_data.COLUMNS_JSON,
                 NULL AS TABLE_CONSTRAINTS_JSON
             FROM dba_views v
+            JOIN dba_objects o
+                ON o.owner = v.owner
+            AND o.object_name = v.view_name
+            AND o.object_type = 'VIEW'
 
             OUTER APPLY (
                 SELECT JSON_ARRAYAGG(
@@ -135,6 +145,7 @@ public class SqlTemplates {
             UNION ALL
 
             SELECT
+                o.object_id AS OID,
                 v.owner AS SCHEMA_NAME,
                 v.mview_name AS TABLE_NAME,
                 'MATERIALIZED VIEW' AS TABLE_TYPE,
@@ -143,6 +154,10 @@ public class SqlTemplates {
                 col_data.COLUMNS_JSON,
                 NULL AS TABLE_CONSTRAINTS_JSON
             FROM dba_mviews v
+            JOIN dba_objects o
+                ON o.owner = v.owner
+            AND o.object_name = v.mview_name
+            AND o.object_type = 'MATERIALIZED VIEW'
 
             OUTER APPLY (
                 SELECT JSON_ARRAYAGG(
